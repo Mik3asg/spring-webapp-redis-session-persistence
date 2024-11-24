@@ -1,0 +1,46 @@
+package com.example.springsecurityldap;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.context.annotation.Bean;
+import org.springframework.beans.factory.annotation.Autowired;
+
+@Configuration
+public class SecurityConfiguration {
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .authorizeHttpRequests((authorize) -> authorize
+                .anyRequest().fullyAuthenticated()
+            )
+            .formLogin(Customizer.withDefaults())
+            .logout(logout -> logout
+                .logoutUrl("/logout")  // Trigger logout through this URL
+                .logoutSuccessUrl("/login?logout")  // Redirect to login page after logout
+                .invalidateHttpSession(true)  // Invalidate the session
+                .clearAuthentication(true)  // Clear authentication attributes
+                .deleteCookies("SESSION")  // Delete session cookies
+            );
+
+        return http.build();
+    }
+
+    @Autowired
+    public void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth
+            .ldapAuthentication()
+            .userDnPatterns("uid={0},ou=people")
+            .groupSearchBase("ou=groups")
+            .contextSource()
+                .url("ldap://localhost:8389/dc=springframework,dc=org")
+                .and()
+            .passwordCompare()
+            .passwordEncoder(new BCryptPasswordEncoder())
+            .passwordAttribute("userPassword");
+    }
+}
